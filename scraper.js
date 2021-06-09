@@ -1,6 +1,7 @@
 const validator = require('validator');
-const ogs = require('open-graph-scraper');
-
+const crypto = require('crypto');
+const dynamoDBHelper = require('./helpers/dynamoDbHelper');
+const openGraphHelper = require('./helpers/openGraphHelper');
 
 const createErrorResponse = (statusCode, message) => ({
   statusCode: statusCode,
@@ -10,7 +11,7 @@ const createErrorResponse = (statusCode, message) => ({
   body: message,
 });
 
-module.exports.urlScraper = (event, context, callback) => {
+module.exports.urlScraper = async (event, context, callback) => {
 
   const data = JSON.parse(event.body);
 
@@ -23,17 +24,30 @@ module.exports.urlScraper = (event, context, callback) => {
     url: data.url
   };
 
-  //open-graph-scraper call
-  ogs(options, (error, results, response) => {
-    if (!error) {
-      callback(null, {
-        statusCode: 200,
-        body: JSON.stringify(results),
-      })
+  const hash = crypto.createHash('md5').update(data.url).digest('hex');
+  let cache = await dynamoDBHelper.get(hash);
+  const currentTimeInSeconds = parseInt((new Date()).getTime() / 1000);
+  if (!cache.Item || cache.Item.ttl < currentTimeInSeconds) {
 
-    } else {
-      callback(null, createErrorResponse(500, 'Internal Server Error'));
-    }
-  });
+    let result = await openGraphHelper.scrape(options);
+    result.id = hash;
+    result.ttl = (currentTimeInSeconds + parseInt(process.env.CACHING_TIME_IN_SECONDS));
+    await dynamoDBHelper.put(result);
+    delete result.id;
+    delete result.ttl;
+    callback(null, {
+      statusCode: 200,
+      body: JSON.stringify(result),
+    })
+
+  } else {
+    delete cache.id;
+    delete cache.ttl;
+    callback(null, {
+      statusCode: 200,
+      body: JSON.stringify(cache),
+    })
+
+  }
 
 };

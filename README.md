@@ -20,7 +20,7 @@ npm test
 ```
 
 
-## Curl Command example
+## Curl Command
 
 ```bash
 
