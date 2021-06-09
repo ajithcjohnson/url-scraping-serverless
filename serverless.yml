@@ -1,0 +1,15 @@
+service: url-scraping
+
+provider:
+  name: aws
+  runtime: nodejs14.x
+  region: ap-south-1
+
+functions:
+  scraper:
+    handler: scraper.urlScraper
+    events:
+      - http:
+          path: scraper
+          method: post
+          cors: true
