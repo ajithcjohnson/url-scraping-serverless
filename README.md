@@ -12,7 +12,15 @@ npm install
 serverless deploy
 ```
 
-*Get Meta*
+
+## Test
+
+```
+npm test
+```
+
+
+## Curl Command example
 
 ```bash
 
